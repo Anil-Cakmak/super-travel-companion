@@ -1,13 +1,14 @@
 from my_agent.agent import graph
+from typing import Generator
 
-def chat(user_input: str, thread: str) -> str:
+def chat(user_input: str, thread: str) -> Generator[str, None, None]:
 
     if not user_input.strip():
-        return "Error: Empty input"
+        yield "Error: Empty input"
+        return
         
     try:
         config = {"configurable": {"thread_id": thread}}
-        response_message = ""
 
         for event in graph.stream(
             {"messages": [{"role": "user", "content": user_input}]},
@@ -15,8 +16,8 @@ def chat(user_input: str, thread: str) -> str:
         ):
             for value in event.values():
                 if "messages" in value:
-                    response_message = f"{value['messages'][-1].content}"
+                    yield value['messages'][-1].content
     
-        return response_message
     except Exception as e:
-        return f"Chat Error: {e} \n\n Please try again or start a new session."
+        yield f"Chat Error: {e} \n\n Please try again or start a new session."
+        return

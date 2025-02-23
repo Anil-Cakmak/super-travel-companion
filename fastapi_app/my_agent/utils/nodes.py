@@ -2,7 +2,7 @@ import os
 import re
 from dotenv import load_dotenv
 from typing import Any, Dict, List, Literal
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from my_agent.utils.state import AgentState
 from my_agent.utils.tools import Queries, run_search_multiple_queries
@@ -33,8 +33,10 @@ def user_guide_node(state: AgentState) -> Dict[str, Any]:
 
     response = model.invoke(messages)
 
-    if any(pattern in response.content for pattern in ["Plan:", "Refine:"]):
-        return {"task": response.content}
+    if "Plan:" in response.content:
+        return {"task": response.content, "messages": [AIMessage(content="I am preparing your itinerary...\n\n")]}
+    elif "Refine:" in response.content:
+        return {"task": response.content, "messages": [AIMessage(content="I am researching your request...\n\n")]}
 
     return {"messages": [response]}
 

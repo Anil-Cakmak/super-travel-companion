@@ -1,10 +1,18 @@
 import streamlit as st
 import requests
-import json
 import uuid
 
+
+def fetch_streamed_response(api_url, payload):
+    with requests.post(api_url, json=payload, stream=True) as response:
+        response.raise_for_status()
+        for chunk in response.iter_content(chunk_size=None):
+            if chunk:
+                yield chunk.decode("utf-8")
+
+
 def main(api_url):
-    st.set_page_config(page_title="AI Travel Companion", page_icon=":airplane:")
+    st.set_page_config(page_title="AI Travel Companion", page_icon="✈️")
     st.title("Super Travel Companion")
 
     if "messages" not in st.session_state:
@@ -17,30 +25,19 @@ def main(api_url):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    if user_input := st.chat_input("Ask me about travel!"):
+    user_input = st.chat_input("Ask me about travel!")
+
+    if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        try:
-            payload = {
-                "user_input": user_input,
-                "thread": st.session_state["thread_id"]
-            }
-            response = requests.post(api_url, json=payload)
-            response.raise_for_status()
-            agent_response = response.json()["response"]
 
-            st.session_state.messages.append({"role": "assistant", "content": agent_response})
+        for chunk in fetch_streamed_response(api_url, {"user_input": user_input, "thread": st.session_state["thread_id"]}):
             with st.chat_message("assistant"):
-                st.markdown(agent_response)
+                st.markdown(chunk)
+            st.session_state.messages.append({"role": "assistant", "content": chunk})
 
-        except requests.exceptions.RequestException as e:
-            st.error(f"Error communicating with the backend API: {e}")
-        except (KeyError, json.JSONDecodeError) as e:
-            st.error(f"Error processing response from the API: {e}. Raw response: {response.text if hasattr(response, 'text') else 'No response text'}")
-        except Exception as e:
-            st.error(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     API_URL = "http://fastapi:8000/agent"

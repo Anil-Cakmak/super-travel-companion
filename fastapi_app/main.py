@@ -1,8 +1,7 @@
-from my_agent.agent import graph
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from my_agent.chat import chat
-
+from starlette.responses import StreamingResponse
 
 class Request(BaseModel):
     user_input: str
@@ -15,8 +14,7 @@ app = FastAPI()
 @app.post("/agent")
 async def query_agent(request: Request):
     try:
-        response = chat(request.user_input, request.thread)
-        return {"response": response}
+        return StreamingResponse(chat(request.user_input, request.thread), media_type="text/plain")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
